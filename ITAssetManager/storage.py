@@ -167,3 +167,53 @@ class Store:
         finally:
             if temp and os.path.exists(temp): os.unlink(temp)
             lock.unlink(missing_ok=True)
+
+    def relocate(self, sheet, row, destination):
+        """Move a record without shifting source rows. Roll back on any failure."""
+        if destination == sheet: return
+        if destination not in self.sheets: raise ValueError('이동할 시트가 없습니다.')
+        from copy import deepcopy
+        from openpyxl.formula.translate import Translator
+        old_book = deepcopy(self.book)
+        old_cache = deepcopy(self.cache)
+        old_pending = list(self.pending)
+        try:
+            item = next((x for x in self.rows() if x['sheet']==sheet and x['row']==row),None)
+            if not item: raise ValueError('이동할 자산을 찾지 못했습니다.')
+            source = self.book[sheet]
+            values = {}
+            formulas = {}
+            extra = []
+            target_headers = self.headers(destination)
+            def key(label):
+                return '사용자' if label in ('User','User KOR') else label
+            by_name = {key(v):c for c,v in target_headers.items()}
+            for col,label in self.headers(sheet).items():
+                if col in (2,17): continue
+                value = source.cell(row,col).value
+                dest_col = by_name.get(key(label))
+                if dest_col:
+                    if source.cell(row,col).data_type == 'f':
+                        formulas[dest_col] = (source.cell(row,col).coordinate,value)
+                        values[dest_col] = item['values'].get(col)
+                    else: values[dest_col] = value
+                elif value is not None:
+                    extra.append(f'{label}: {display(item["values"].get(col))}')
+            if extra: values[18] = '\n'.join([display(values.get(18))]+extra).strip()
+            # Clear first so the duplicate validator doesn't reject the source S/N.
+            for col in range(2,19): source.cell(row,col).value = None
+            occupied = [x['row'] for x in self.rows() if x['sheet']==destination]
+            newrow = max(occupied,default=3)+1
+            # The template can contain formulas below the last populated record.
+            for col in range(2,19):
+                self.book[destination].cell(newrow,col).value = None
+                self.cache[destination].cell(newrow,col).value = None
+            self.apply(destination,None,values)
+            for col,(origin,value) in formulas.items():
+                target = self.book[destination].cell(newrow,col)
+                target.value = Translator(value,origin=origin).translate_formula(target.coordinate)
+                self.cache[destination].cell(newrow,col).value = values.get(col)
+            self.pending = old_pending + [('이동: '+sheet+' → '+destination,destination,newrow)]
+        except Exception:
+            self.book,self.cache,self.pending = old_book,old_cache,old_pending
+            raise
