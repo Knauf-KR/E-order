@@ -1,12 +1,13 @@
 """Knauf IT Asset Manager — local Excel desktop application."""
-import os, json, csv, traceback
+import os, json, csv, traceback, threading, queue
 from collections import Counter
 from pathlib import Path
 from datetime import date, datetime
 from copy import deepcopy
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font
-from storage import Store, as_date, display, add_months, ERRORS
+from storage import Store, as_date, display, add_months, ERRORS, digest
+from sync_policy import SyncPolicy
 from brand import LOGO_PNG
 
 BASE = Path(__file__).resolve().parent
@@ -54,18 +55,24 @@ def checks(store,items):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('Knauf | IT 자산 관리 v0.2'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
+        self.title('Knauf | IT 자산 관리 v0.3'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
         families=set(font.families(self))
         self.ui_font=next((f for f in ['맑은 고딕','Malgun Gothic','Noto Sans CJK KR','Arial'] if f in families),'TkDefaultFont')
         self.option_add('*Font',(self.ui_font,10))
         self.store=None; self.items={}; self.page='overview'; self.current_rows=[]; self.selected_item=None; self.sort_col=None; self.reverse=False
-        self.dialog=None; self.loaded_at=''; self.query=tk.StringVar(); self.state=tk.StringVar(value='전체'); self.location=tk.StringVar(value='전체 위치'); self.kind=tk.StringVar(value='전체 종류')
+        self.dialog=None; self.sap_window=None; self.loaded_at='';
+        self._events=queue.Queue();self._sync_policy=SyncPolicy();self._watch_inflight=False;self._watch_loading=False;self.external_changed=False;self._auto_job=None;self._auto_failed=False
+        self.auto_save=tk.BooleanVar(value=True)
+        try:self.auto_save.set(json.loads(CONFIG.read_text(encoding='utf-8')).get('auto_save',True))
+        except Exception:pass
+        self.query=tk.StringVar(); self.state=tk.StringVar(value='전체'); self.location=tk.StringVar(value='전체 위치'); self.kind=tk.StringVar(value='전체 종류')
         self._suspend=False; self._search_job=None
         self.styles()
         self.build()
         self.protocol('WM_DELETE_WINDOW',self.close)
         self.bind('<Control-s>',lambda e:self.save()); self.bind('<Control-f>',lambda e:self.search.focus_set()); self.bind('<F5>',lambda e:self.reload())
         self.after(100,self.start)
+        self.after(1000,self.monitor_tick);self.after(200,self.monitor_receive)
 
     def styles(self):
         s=ttk.Style(self); s.theme_use('clam')
@@ -94,18 +101,19 @@ class App(tk.Tk):
     def build(self):
         side=tk.Frame(self,bg=WHITE,width=216); side.pack(side='left',fill='y'); side.pack_propagate(False)
         self.logo=tk.PhotoImage(data=LOGO_PNG).subsample(3)
-        tk.Label(side,image=self.logo,bg=WHITE).pack(anchor='w',padx=28,pady=(28,7))
+        tk.Label(side,image=self.logo,bg=WHITE).pack(anchor='w',padx=28,pady=(12,4))
         self.label(side,'IT ASSET MANAGER',size=10,color=NAVY,bold=True).pack(anchor='w',padx=24)
-        self.label(side,'KOREA  /  자산 관리',size=9,color=MUTED).pack(anchor='w',padx=24,pady=(3,28))
+        self.label(side,'KOREA  /  자산 관리',size=9,color=MUTED).pack(anchor='w',padx=24,pady=(3,16))
         self.nav_buttons={}
         for key,(title,desc,sheet) in PAGES.items():
             if key in ('office','expiry'):
-                self.label(side,'자산 목록' if key=='office' else '관리 도구',size=9,color=MUTED).pack(anchor='w',padx=24,pady=(18,6))
-            button=tk.Button(side,text=title,anchor='w',font=(self.ui_font,11),bg=WHITE,fg=INK,activebackground='#E6F5FC',activeforeground=NAVY,relief='flat',bd=0,highlightthickness=0,padx=24,pady=12,cursor='hand2',command=lambda p=key:self.navigate(p))
+                self.label(side,'자산 목록' if key=='office' else '관리 도구',size=9,color=MUTED).pack(anchor='w',padx=24,pady=(12,4))
+            button=tk.Button(side,text=title,anchor='w',font=(self.ui_font,10),bg=WHITE,fg=INK,activebackground='#E6F5FC',activeforeground=NAVY,relief='flat',bd=0,highlightthickness=0,padx=24,pady=8,cursor='hand2',command=lambda p=key:self.navigate(p))
             button.pack(fill='x',padx=8,pady=2); self.nav_buttons[key]=button
+        tk.Button(side,text='SAP 자산 대조',anchor='w',font=(self.ui_font,11,'bold'),bg='#E7F5FC',fg=NAVY,relief='flat',bd=0,highlightthickness=0,padx=24,pady=8,cursor='hand2',command=self.open_sap).pack(fill='x',padx=8,pady=(16,2))
         bottom=tk.Frame(side,bg=WHITE); bottom.pack(side='bottom',fill='x',padx=20,pady=22)
         self.button(bottom,'사용 안내',self.help).pack(fill='x')
-        self.label(bottom,'EXCEL EDITION  ·  v0.2',size=9,color=MUTED).pack(pady=(12,0))
+        self.label(bottom,'EXCEL EDITION  ·  v0.3',size=9,color=MUTED).pack(pady=(12,0))
         main=tk.Frame(self,bg=BG); main.pack(side='left',fill='both',expand=True)
         top=tk.Frame(main,bg=NAVY,height=58); top.pack(fill='x'); top.pack_propagate(False)
         self.label(top,'WORKPLACE  /  IT OPERATIONS',size=10,color=WHITE,bg=NAVY,bold=True).pack(side='left',padx=24)
@@ -115,7 +123,8 @@ class App(tk.Tk):
         self.titlelabel=self.label(header,'자산 현황',size=24,bg=BG,bold=True); self.titlelabel.pack(side='left')
         self.button(header,'엑셀 파일 선택',self.choose).pack(side='right',padx=(8,0))
         self.button(header,'새로고침  F5',self.reload).pack(side='right')
-        self.description=self.label(self.content,'',color=MUTED,bg=BG,anchor='w'); self.description.pack(fill='x',pady=(5,16))
+        self.description=self.label(self.content,'',color=MUTED,bg=BG,anchor='w'); self.description.pack(fill='x',pady=(5,5))
+        self.sync_label=self.label(self.content,'OneDrive 로컬 변경을 3초 간격으로 확인합니다.',size=9,color=MUTED,bg=BG,anchor='w');self.sync_label.pack(fill='x',pady=(0,12))
         self.cards=tk.Frame(self.content,bg=BG); self.cards.pack(fill='x',pady=(0,16))
         self.card_values=[]
         for title,color,target in [('관리 중',BLUE,'overview'),('만료 · 교체 검토',RED,'expired'),('90일 이내',ORANGE,'expiry'),('창고 보관',NAVY,'stock'),('정보 점검',GREEN,'quality')]:
@@ -166,6 +175,7 @@ class App(tk.Tk):
         self.pending_label=self.label(footer,'저장된 상태',size=10,color=GREEN);self.pending_label.pack(side='left',padx=20,pady=14)
         self.savebutton=self.button(footer,'엑셀에 저장  Ctrl+S',self.save,True);self.savebutton.pack(side='right',padx=16,pady=10)
         self.button(footer,'변경 내역',self.pending_window).pack(side='right')
+        tk.Checkbutton(footer,text='자동 저장',variable=self.auto_save,command=self.auto_toggle,bg=WHITE,fg=INK,activebackground=WHITE,selectcolor=WHITE,font=(self.ui_font,10)).pack(side='right',padx=12)
         self.navigate('overview')
 
     def schedule_refresh(self,*_):
@@ -174,6 +184,7 @@ class App(tk.Tk):
         self._search_job=self.after(150,self.refresh)
 
     def start(self):
+        if self.store:return
         try:
             p=json.loads(CONFIG.read_text(encoding='utf-8')).get('path')
             if p and Path(p).is_file():self.load(p);return
@@ -189,14 +200,16 @@ class App(tk.Tk):
     def load(self,path):
         try:
             new=Store(path)
-            CONFIG.parent.mkdir(parents=True,exist_ok=True);CONFIG.write_text(json.dumps({'path':str(new.path)},ensure_ascii=False),encoding='utf-8')
-            self.store=new;self.loaded_at=datetime.now().strftime('%H:%M');self.file_status.configure(text=new.path.name+'  ·  '+self.loaded_at+' 불러옴')
-            self.locationbox.configure(values=['전체 위치']+sorted({location_key(i['values'].get(8)) for i in new.rows()}))
-            self.kindbox.configure(values=['전체 종류']+sorted({display(i['values'].get(6)) for i in new.rows() if i['values'].get(6)}))
-            self.reset_filters()
+            self.adopt_store(new,reset=True)
+            self.remember()
         except Exception as exc:messagebox.showerror('불러오기 실패',str(exc),parent=self)
 
-    def discard(self):return not self.store or not self.store.pending or messagebox.askyesno('미저장 변경','저장하지 않은 변경을 모두 버릴까요?',parent=self)
+    def discard(self):
+        if not self.store or not self.store.pending:return True
+        if self._auto_job:self.after_cancel(self._auto_job);self._auto_job=None
+        answer=messagebox.askyesno('미저장 변경','저장하지 않은 변경을 모두 버릴까요?',parent=self)
+        if not answer:self.queue_auto_save()
+        return answer
     def choose(self):
         if not self.discard():return
         p=filedialog.askopenfilename(title='OneDrive 엑셀 파일 선택',filetypes=[('Excel 통합문서','*.xlsx')])
@@ -206,7 +219,7 @@ class App(tk.Tk):
 
     def navigate(self,page):
         self.page=page;title,desc,sheet=PAGES[page];self.titlelabel.configure(text=title);self.description.configure(text=desc)
-        for key,b in self.nav_buttons.items():b.configure(bg='#E7F5FC' if key==page else WHITE,fg=NAVY if key==page else INK,font=(self.ui_font,11,'bold' if key==page else 'normal'))
+        for key,b in self.nav_buttons.items():b.configure(bg='#E7F5FC' if key==page else WHITE,fg=NAVY if key==page else INK,font=(self.ui_font,10,'bold' if key==page else 'normal'))
         if page=='overview':self.rolebar.pack(before=self.search.master,fill='x',pady=(0,14))
         else:self.rolebar.pack_forget()
         self.reset_filters()
@@ -251,6 +264,8 @@ class App(tk.Tk):
         n=len(self.store.pending)
         self.pending_label.configure(text=f'저장 대기 {n}건 · 아직 엑셀에 반영되지 않았습니다' if n else '✓ 모든 변경이 저장되었습니다',fg=ORANGE if n else GREEN)
         self.savebutton.configure(state='normal' if n else 'disabled')
+        self.queue_auto_save()
+        if self.sap_window and self.sap_window.winfo_exists() and not self.sap_window.loading:self.sap_window.recompare()
         self.info.configure(text=f'조회 {len(self.items):,} / 전체 {len(rows):,}건  ·  날짜 기준 {date.today():%Y-%m-%d}  ·  OneDrive 공유 수정은 한 번에 한 사람씩')
 
     def sort(self,col):
@@ -296,12 +311,99 @@ class App(tk.Tk):
         self.label(win,'새로고침으로 미저장 변경을 모두 취소할 수 있습니다.',color=MUTED,bg=BG).pack(pady=10)
         self.button(win,'닫기',win.destroy).pack(pady=(0,14))
 
-    def save(self):
+    def save(self,auto=False):
+        if self._auto_job:self.after_cancel(self._auto_job)
+        self._auto_job=None
         if not self.store or not self.store.pending:return
-        if not messagebox.askyesno('공유 엑셀 저장',f'{len(self.store.pending)}건의 작업을 엑셀에 반영합니다.\n다른 사용자가 수정 중이지 않은지 확인하세요.\n저장 전 원본 백업이 생성됩니다. 계속할까요?',parent=self):return
+        if self.dialog and self.dialog.winfo_exists():
+            if auto:self._auto_job=self.after(1000,lambda:self.save(auto=True))
+            return
+        if self.external_changed:
+            self.sync_label.configure(text='외부 변경 감지 · 저장을 중지했습니다. 편집 내용을 기록하고 새로고침해 주세요.',fg=ORANGE)
+            if not auto:messagebox.showwarning('외부 변경','다른 변경을 덮어쓰지 않도록 저장을 중지했습니다. 편집 내용을 기록한 후 새로고침하세요.',parent=self)
+            return
+        if not auto and not messagebox.askyesno('공유 엑셀 저장',f'{len(self.store.pending)}건을 저장합니다. 다른 사용자가 수정 중이지 않은지 확인하세요.\n저장 전 원본 백업이 생성됩니다. 계속할까요?',parent=self):return
         try:
-            backup=self.store.save();self.refresh();messagebox.showinfo('저장 완료',f'저장했습니다. OneDrive 동기화 완료를 확인하세요.\n\n백업: {backup}',parent=self)
-        except Exception as exc:messagebox.showerror('저장 실패',str(exc),parent=self)
+            backup=self.store.save();self._auto_failed=False;self.refresh()
+            self.sync_label.configure(text=f"{'자동 저장' if auto else '저장'} 완료 {datetime.now():%H:%M:%S} · OneDrive 동기화 완료는 작업 표시줄에서 확인하세요.",fg=GREEN)
+            if self.sap_window and self.sap_window.winfo_exists():self.sap_window.recompare()
+            if not auto:messagebox.showinfo('저장 완료',f'저장했습니다. OneDrive 동기화 완료를 확인하세요.\n\n백업: {backup}',parent=self)
+        except Exception as exc:
+            self._auto_failed=True
+            self.sync_label.configure(text=f'저장 중지 · {str(exc)[:125]} · 수동 저장으로 재시도하세요.',fg=RED)
+            self.pending_label.configure(text='저장되지 않은 변경이 있습니다',fg=RED)
+            if not auto:messagebox.showerror('저장 실패',str(exc),parent=self)
+
+    def remember(self):
+        CONFIG.parent.mkdir(parents=True,exist_ok=True)
+        CONFIG.write_text(json.dumps({'path':str(self.store.path) if self.store else '', 'auto_save':self.auto_save.get()},ensure_ascii=False),encoding='utf-8')
+
+    def auto_toggle(self):
+        self._auto_failed=False;self.remember()
+        if self.auto_save.get():self.queue_auto_save()
+        elif self._auto_job:self.after_cancel(self._auto_job);self._auto_job=None
+
+    def queue_auto_save(self):
+        if self.store and self.store.pending and self.auto_save.get() and not self._auto_failed and not self.external_changed and not self._auto_job:
+            self._auto_job=self.after(800,lambda:self.save(auto=True))
+
+    def adopt_store(self,new,reset=False):
+        self.store=new;self.external_changed=False;self._auto_failed=False
+        self.loaded_at=datetime.now().strftime('%H:%M:%S');self.file_status.configure(text=new.path.name+'  ·  '+self.loaded_at+' 불러옴')
+        locations=['전체 위치']+sorted({location_key(i['values'].get(8)) for i in new.rows()})
+        kinds=['전체 종류']+sorted({display(i['values'].get(6)) for i in new.rows() if i['values'].get(6)})
+        self.locationbox.configure(values=locations);self.kindbox.configure(values=kinds)
+        if self.location.get() not in locations:self.location.set('전체 위치')
+        if self.kind.get() not in kinds:self.kind.set('전체 종류')
+        if reset:self.reset_filters()
+        else:self.refresh()
+        self.sync_label.configure(text='자동 변경 감지 중 · 로컬 파일을 3초 간격으로 확인합니다.',fg=MUTED)
+        if self.sap_window and self.sap_window.winfo_exists():self.sap_window.recompare()
+
+    def monitor_tick(self):
+        if self.store and not self._watch_inflight and not self._watch_loading:
+            path=self.store.path;baseline=self.store.signature;self._watch_inflight=True
+            def scan():
+                try:self._events.put(('digest',path,baseline,digest(path),None))
+                except Exception as exc:self._events.put(('digest',path,baseline,None,str(exc)))
+            threading.Thread(target=scan,daemon=True).start()
+        self.after(3000,self.monitor_tick)
+
+    def monitor_receive(self):
+        while True:
+            try:kind,path,baseline,value,error=self._events.get_nowait()
+            except queue.Empty:break
+            if kind=='digest':self._watch_inflight=False
+            else:self._watch_loading=False
+            if not self.store or self.store.path!=path or self.store.signature!=baseline:continue
+            if error:
+                self.sync_label.configure(text='파일 접근 대기 · '+str(error)[:120],fg=ORANGE);continue
+            busy=bool(self.store.pending or (self.dialog and self.dialog.winfo_exists()))
+            if kind=='reload':
+                if busy:
+                    self.external_changed=True;self.sync_label.configure(text='외부 변경 감지 · 편집/상세 창을 닫으면 갱신합니다. 미저장 변경이 있으면 먼저 정리하세요.',fg=ORANGE)
+                else:
+                    self.adopt_store(value);self.sync_label.configure(text=f'외부 변경을 자동 반영했습니다 · {self.loaded_at}',fg=GREEN)
+                continue
+            action=self._sync_policy.observe(value,baseline,busy)
+            self.external_changed=action!='same'
+            if action=='same':
+                if not self._auto_failed:self.queue_auto_save()
+            elif action=='blocked':self.sync_label.configure(text='외부 변경 감지 · 현재 편집 내용은 보존했습니다. 편집 내용을 기록하고 새로고침해 주세요.',fg=ORANGE)
+            elif action=='waiting':self.sync_label.configure(text='외부 변경 감지 · 파일이 안정되면 자동 갱신합니다.',fg=BLUE)
+            elif action=='reload':
+                self._watch_loading=True
+                def reload_work(p=path,b=baseline):
+                    try:self._events.put(('reload',p,b,Store(p),None))
+                    except Exception as exc:self._events.put(('reload',p,b,None,str(exc)))
+                threading.Thread(target=reload_work,daemon=True).start()
+        self.after(200,self.monitor_receive)
+
+    def open_sap(self):
+        if not self.store:self.choose();return
+        if self.sap_window and self.sap_window.winfo_exists():self.sap_window.lift();return
+        from sap_ui import SapWindow
+        self.sap_window=SapWindow(self)
 
     def export(self):
         if not self.store:return
@@ -320,7 +422,7 @@ class App(tk.Tk):
         except Exception as exc:messagebox.showerror('내보내기 실패',str(exc),parent=self)
 
     def help(self):
-        messagebox.showinfo('사용 안내','① 왼쪽 메뉴에서 사무직·공용·데스크탑 등을 선택합니다.\n② 이름 / PC명 / S/N / SAP번호로 검색합니다.\n③ 자산을 더블클릭하면 상세 조회 창이 열립니다.\n④ 상세 창의 수정 버튼으로 편집하고 변경 적용합니다.\n⑤ 하단의 엑셀에 저장을 눌러 반영합니다.\n\n교체·만료 관리: 만료 및 30/60/90일 이내 조회\n데이터 점검: 중복, 누락, 날짜와 수식 오류 확인\n창고 이동·폐기: 상세 창 → 이동 / 폐기\n\nF5 새로고침 / Ctrl+F 검색 / Ctrl+S 저장\n\nOneDrive: 한 번에 한 사람만 수정하세요.\n자세한 내용은 프로그램 폴더의 README.md를 참고하세요.',parent=self)
+        messagebox.showinfo('사용 안내','① 왼쪽 메뉴에서 사무직·공용·데스크탑 등을 선택합니다.\n② 이름 / PC명 / S/N / SAP번호로 검색합니다.\n③ 자산을 더블클릭하면 상세 조회 창이 열립니다.\n④ 상세 창의 수정 버튼으로 편집하고 변경 적용합니다.\n⑤ 자동 저장이 켜져 있으면 적용 후 자동 저장됩니다. 끄면 하단에서 수동 저장합니다.\n\n교체·만료 관리: 만료 및 30/60/90일 이내 조회\n데이터 점검: 중복, 누락, 날짜와 수식 오류 확인\n창고 이동·폐기: 상세 창 → 이동 / 폐기\n\nF5 새로고침 / Ctrl+F 검색 / Ctrl+S 저장\n\nOneDrive: 한 번에 한 사람만 수정하세요.\n자세한 내용은 프로그램 폴더의 README.md를 참고하세요.',parent=self)
     def close(self):
         if self.dialog and self.dialog.winfo_exists():self.dialog.lift();return
         if self.discard():self.destroy()
@@ -349,7 +451,7 @@ class Editor(tk.Toplevel):
         self.sheet=tk.StringVar(value=item['sheet'] if item else (PAGES[app.page][2] or app.store.sheets[0]))
         self.build()
         foot=tk.Frame(self,bg=BG,padx=20,pady=16);foot.pack(fill='x')
-        app.label(foot,'변경 적용 후 메인 화면에서 엑셀에 저장하세요.',size=9,color=MUTED,bg=BG).pack(side='left')
+        app.label(foot,'변경 적용하면 자동 저장됩니다.' if app.auto_save.get() else '변경 적용 후 메인 화면에서 엑셀에 저장하세요.',size=9,color=MUTED,bg=BG).pack(side='left')
         app.button(foot,'닫기',self.cancel).pack(side='right',padx=(8,0))
         self.applybutton=app.button(foot,'변경 적용',self.apply,True);self.applybutton.pack(side='right');self.applybutton.configure(state='normal' if self.editing else 'disabled')
 
@@ -466,7 +568,7 @@ class Editor(tk.Toplevel):
         ttk.Combobox(win,textvariable=target,values=[s for s in self.app.store.sheets if s!=self.item['sheet']],state='readonly').pack(fill='x',padx=22,pady=18)
         self.app.label(win,'폐기완료 선택 시 만료 관리 대상에서 제외됩니다.\n기존 사용자·장비 정보는 유지합니다.\n새 시트에 없는 항목은 비고에 보관합니다.',color=MUTED,bg=BG,justify='left').pack(anchor='w',padx=22)
         def perform():
-            if not messagebox.askyesno('이동 확인',f"{self.item['sheet']} → {target.get()}\n이동할까요? 엑셀 저장 전까지는 미저장 상태입니다.",parent=win):return
+            if not messagebox.askyesno('이동 확인',f"{self.item['sheet']} → {target.get()}\n이동할까요? 자동 저장이 켜져 있으면 적용 후 저장됩니다.",parent=win):return
             try:
                 self.app.store.relocate(self.item['sheet'],self.item['row'],target.get());self.app.refresh();win.destroy();self.destroy()
             except Exception as exc:messagebox.showerror('이동 실패',str(exc),parent=win)
