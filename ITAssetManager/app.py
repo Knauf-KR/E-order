@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font
 from storage import Store, as_date, display, add_months, ERRORS, digest
 from sync_policy import SyncPolicy
+from portable import asset_directory, workbook_path
 from brand import LOGO_PNG
 
 BASE = Path(__file__).resolve().parent
@@ -53,9 +54,10 @@ def checks(store,items):
     return result
 
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self,asset_dir=None):
         super().__init__()
-        self.title('Knauf | IT 자산 관리 v0.3'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
+        self.asset_dir=asset_directory(asset_dir)
+        self.title('Knauf | IT 자산 관리 v0.4'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
         families=set(font.families(self))
         self.ui_font=next((f for f in ['맑은 고딕','Malgun Gothic','Noto Sans CJK KR','Arial'] if f in families),'TkDefaultFont')
         self.option_add('*Font',(self.ui_font,10))
@@ -113,7 +115,7 @@ class App(tk.Tk):
         tk.Button(side,text='SAP 자산 대조',anchor='w',font=(self.ui_font,11,'bold'),bg='#E7F5FC',fg=NAVY,relief='flat',bd=0,highlightthickness=0,padx=24,pady=8,cursor='hand2',command=self.open_sap).pack(fill='x',padx=8,pady=(16,2))
         bottom=tk.Frame(side,bg=WHITE); bottom.pack(side='bottom',fill='x',padx=20,pady=22)
         self.button(bottom,'사용 안내',self.help).pack(fill='x')
-        self.label(bottom,'EXCEL EDITION  ·  v0.3',size=9,color=MUTED).pack(pady=(12,0))
+        self.label(bottom,'EXCEL EDITION  ·  v0.4',size=9,color=MUTED).pack(pady=(12,0))
         main=tk.Frame(self,bg=BG); main.pack(side='left',fill='both',expand=True)
         top=tk.Frame(main,bg=NAVY,height=58); top.pack(fill='x'); top.pack_propagate(False)
         self.label(top,'WORKPLACE  /  IT OPERATIONS',size=10,color=WHITE,bg=NAVY,bold=True).pack(side='left',padx=24)
@@ -185,17 +187,13 @@ class App(tk.Tk):
 
     def start(self):
         if self.store:return
-        try:
-            p=json.loads(CONFIG.read_text(encoding='utf-8')).get('path')
-            if p and Path(p).is_file():self.load(p);return
-        except Exception:pass
-        demo=BASE/'체험용_IT_자산리스트.xlsx'
-        if not demo.exists():
-            try:
-                from create_demo import create_demo
-                create_demo(demo)
-            except Exception as exc:messagebox.showwarning('체험 파일 생성',f'{exc}\n엑셀 파일 선택으로 시작하세요.',parent=self)
-        if demo.exists():self.load(demo)
+        path=workbook_path(self.asset_dir)
+        if path.is_file():
+            self.load(path)
+            return
+        self.file_status.configure(text='공유 엑셀을 찾지 못했습니다')
+        self.sync_label.configure(text=f'실행 위치에서 {path.name}을 찾지 못했습니다. 엑셀 파일 선택으로 열 수 있습니다.',fg=ORANGE)
+        messagebox.showwarning('공유 엑셀 위치 확인',f'실행 파일과 같은 폴더에 아래 파일을 두세요.\n\n{path}\n\n다른 엑셀이나 체험용 파일은 자동으로 열지 않습니다.\nOneDrive 폴더 동기화 상태와 파일 이름을 확인해 주세요.',parent=self)
 
     def load(self,path):
         try:
@@ -336,7 +334,7 @@ class App(tk.Tk):
 
     def remember(self):
         CONFIG.parent.mkdir(parents=True,exist_ok=True)
-        CONFIG.write_text(json.dumps({'path':str(self.store.path) if self.store else '', 'auto_save':self.auto_save.get()},ensure_ascii=False),encoding='utf-8')
+        CONFIG.write_text(json.dumps({'auto_save':self.auto_save.get()},ensure_ascii=False),encoding='utf-8')
 
     def auto_toggle(self):
         self._auto_failed=False;self.remember()
@@ -423,6 +421,15 @@ class App(tk.Tk):
 
     def help(self):
         messagebox.showinfo('사용 안내','① 왼쪽 메뉴에서 사무직·공용·데스크탑 등을 선택합니다.\n② 이름 / PC명 / S/N / SAP번호로 검색합니다.\n③ 자산을 더블클릭하면 상세 조회 창이 열립니다.\n④ 상세 창의 수정 버튼으로 편집하고 변경 적용합니다.\n⑤ 자동 저장이 켜져 있으면 적용 후 자동 저장됩니다. 끄면 하단에서 수동 저장합니다.\n\n교체·만료 관리: 만료 및 30/60/90일 이내 조회\n데이터 점검: 중복, 누락, 날짜와 수식 오류 확인\n창고 이동·폐기: 상세 창 → 이동 / 폐기\n\nF5 새로고침 / Ctrl+F 검색 / Ctrl+S 저장\n\nOneDrive: 한 번에 한 사람만 수정하세요.\n자세한 내용은 프로그램 폴더의 README.md를 참고하세요.',parent=self)
+    def destroy(self):
+        # Stop recurring watchers before destroying Tcl callbacks.
+        try:
+            for timer in self.tk.call('after','info'):
+                self.after_cancel(timer)
+        except tk.TclError:
+            pass
+        super().destroy()
+
     def close(self):
         if self.dialog and self.dialog.winfo_exists():self.dialog.lift();return
         if self.discard():self.destroy()
@@ -579,7 +586,11 @@ class Editor(tk.Toplevel):
         win.bind('<Destroy>',lambda e:self.grab_set() if e.widget is win and self.winfo_exists() else None)
 
 if __name__=='__main__':
-    app=App()
+    import argparse
+    parser=argparse.ArgumentParser(description='Knauf IT Asset Manager')
+    parser.add_argument('--asset-dir',help='Folder containing the shared IT workbook')
+    args=parser.parse_args()
+    app=App(asset_dir=args.asset_dir)
     def on_error(kind,error,tb):
         log=CONFIG.parent/'error.log';log.parent.mkdir(parents=True,exist_ok=True);log.write_text(''.join(traceback.format_exception(kind,error,tb)),encoding='utf-8')
         messagebox.showerror('오류',f'{error}\n\n오류 기록: {log}',parent=app)
