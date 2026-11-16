@@ -1,9 +1,9 @@
-# Knauf IT 자산 관리 v0.4
+# Knauf IT 자산 관리 v0.5
 
-Windows에서 `launch.bat`으로 실행하고, OneDrive의 기존 Excel 파일을 읽고 수정하는 데스크톱 프로그램입니다.
+Windows에서 `launch.vbs`로 콘솔 창 없이 실행하고, OneDrive의 기존 Excel 파일을 읽고 수정하는 데스크톱 프로그램입니다.
 
 
-## v0.4: 자동 저장·외부 변경 반영·SAP 대조
+## v0.5: 자동 저장·외부 변경 반영·SAP 대조
 - **자동 저장 기본 켜짐**: 상세 창에서 변경 적용, 등록, 삭제 또는 이동 후 약 0.8초 뒤 백업과 함께 Excel에 저장합니다. 입력 중인 미적용 내용은 저장하지 않습니다. 하단 '자동 저장'을 끄면 수동 저장 방식으로 사용합니다. 설정은 PC별로 기억합니다.
 - **외부 변경 감지**: 실행 중 로컬 원본의 SHA-256을 3초마다 비동기로 확인합니다. 외부 변경이 연속 두 번 같은 상태로 확인되고 편집 중이 아니면 자동 갱신합니다. 검색·페이지·필터는 가능한 한 유지합니다.
 - **편집 보호**: 미저장 작업이나 자산 상세 창이 열려 있으면 자동 갱신을 보류합니다. 외부 변경이 확인되면 자동 저장도 멈춥니다. 편집 내용을 따로 기록한 뒤 새로고침해 새 파일에 다시 적용하세요. 자동 병합은 제공하지 않습니다.
@@ -44,12 +44,13 @@ Windows에서 `launch.bat`으로 실행하고, OneDrive의 기존 Excel 파일�
 
 ## 공유 폴더에 배치하고 실행하기
 
-GitHub ZIP을 압축 해제한 후, **루트의 `launch.bat`과 `ITAssetManager` 폴더**를 공유 Excel 옆에 복사하세요. 다른 문서나 회사 Excel은 배포본에 포함하지 않습니다.
+GitHub ZIP을 압축 해제한 후, **루트의 `launch.vbs`, `launch.bat`과 `ITAssetManager` 폴더**를 공유 Excel 옆에 복사하세요. 다른 문서나 회사 Excel은 배포본에 포함하지 않습니다.
 
 ```text
 General - Korea_IT/                 ← 사용자마다 앞쪽 OneDrive 경로는 달라도 됩니다
 ├─ IT_자산리스트.xlsx                ← 기존 공유 Excel을 그대로 둡니다
-├─ launch.bat                       ← 이것을 더블클릭합니다
+├─ launch.vbs                       ← 이것을 더블클릭합니다 (콘솔 없음)
+├─ launch.bat                       ← 설치 확인용으로 함께 둡니다
 └─ ITAssetManager/
    ├─ app.py
    ├─ portable.py
@@ -59,7 +60,7 @@ General - Korea_IT/                 ← 사용자마다 앞쪽 OneDrive 경로�
 ```
 
 1. Python 3.11 이상을 설치합니다. Python Launcher, pip, Tcl/Tk를 포함하세요.
-2. 공유 Excel 옆의 **launch.bat**을 실행합니다. 최초 실행은 openpyxl 설치를 위한 인터넷 연결이 필요합니다.
+2. 공유 Excel 옆의 **launch.vbs**를 실행합니다. 설치 확인은 숨겨진 창에서 처리한 후 pythonw로 GUI를 엽니다. 최초 실행은 openpyxl 설치를 위한 인터넷 연결이 필요합니다.
 3. BAT이 자신의 폴더를 프로그램에 전달합니다. 프로그램은 해당 폴더의 **IT_자산리스트.xlsx**를 자동으로 엽니다.
 4. 하단 자동 저장은 기본 켜짐입니다. 기존 자동 갱신·SAP 대조·백업 기능은 계속 사용할 수 있습니다.
 
@@ -69,11 +70,11 @@ General - Korea_IT/                 ← 사용자마다 앞쪽 OneDrive 경로�
 - 파일이 없으면 예상 위치를 안내합니다. 실제 공유 파일 대신 체험용 파일을 자동 생성하지 않습니다.
 - 파일 이름이 다르거나 다른 파일을 잠시 확인하려면 상단 '엑셀 파일 선택'을 사용할 수 있습니다. 수동 선택은 현재 실행에만 적용되며, 다음 실행은 다시 BAT 옆의 파일을 찾습니다.
 - 실행용 BAT은 현재 작업 폴더에 의존하지 않으므로 다른 위치에서 호출해도 동일한 Excel을 찾습니다.
-- 프로그램 폴더 안의 launch.bat으로 실행해도 표준 배치에서는 상위 폴더의 Excel을 찾습니다. 권장 실행 위치는 Excel 옆의 BAT입니다.
+- 프로그램 폴더 안의 launch.bat으로 실행해도 표준 배치에서는 상위 폴더의 Excel을 찾습니다. 평소에는 Excel 옆의 launch.vbs를 권장합니다. BAT을 직접 실행하면 콘솔이 잠깐 나타날 수 있지만 앱은 pythonw로 따로 실행되므로 콘솔을 계속 띄우지 않습니다.
 - Python 가상환경은 각 PC의 `%LOCALAPPDATA%\KnaufITAssetManager\venv`에 만듭니다. OneDrive 안에 `.venv`를 만들지 않으므로 PC별 Python 경로가 섞이지 않습니다. 이전 버전의 `.venv`를 공유 폴더에 복사할 필요가 없습니다.
 - 자동 저장 설정과 오류 기록은 `%LOCALAPPDATA%\ITAssetManager`에 보관합니다.
 - OneDrive에서 공유 Excel과 프로그램 폴더를 '이 장치에 항상 유지'로 설정하세요. 클라우드 전용 파일은 먼저 내려받아야 할 수 있습니다.
-- Windows 실행용은 **BAT**입니다. Python을 포함한 독립형 EXE 배포본은 아닙니다.
+- 평소 실행용은 **VBS**, 설치 확인 및 문제 진단용은 **BAT**입니다. Python을 포함한 독립형 EXE 배포본은 아닙니다.
 
 ## 화면과 사용 순서
 - 왼쪽에서 역할별 자산 목록을 선택합니다. 각 페이지에서 검색·위치·장비 종류·만료 조건을 조합할 수 있습니다.
@@ -124,3 +125,10 @@ General - Korea_IT/                 ← 사용자마다 앞쪽 OneDrive 경로�
 
 ## 오류 기록
 GUI 오류는 `%LOCALAPPDATA%\ITAssetManager\error.log`에 기록됩니다. 파일 경로 등 업무 정보를 확인한 후 필요한 부분만 공유하세요.
+
+## 콘솔 없이 실행하기
+- `launch.vbs`는 설치·패키지 확인을 숨긴 상태로 처리하고 `pythonw.exe`로 프로그램을 엽니다. 첫 준비 때만 잠시 안내 팝업이 표시될 수 있습니다.
+- 설치 실패는 메시지 창으로 안내하고 `%LOCALAPPDATA%\KnaufITAssetManager\startup.log`에 기록합니다. GUI 시작 단계의 오류는 `app-startup.log`에 기록하고 메시지 창으로 알립니다.
+- Windows가 VBS를 메모장으로 열면 '연결 프로그램 → Microsoft Windows Based Script Host'를 사용하세요. 회사 정책으로 Windows Script Host/VBScript가 차단되면 IT 담당자에게 확인하세요.
+- Python 3.11 이상은 계속 필요합니다. 기존 OneDrive 상대 위치 탐색·자동 저장·SAP 대조 기능은 동일합니다.
+- Windows 전용 VBS/BAT/pythonw 동작은 이 Linux 제작 환경에서 직접 실행 검증하지 못했습니다. Python 구문과 기존 27개 테스트는 검증했습니다.

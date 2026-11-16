@@ -57,7 +57,7 @@ class App(tk.Tk):
     def __init__(self,asset_dir=None):
         super().__init__()
         self.asset_dir=asset_directory(asset_dir)
-        self.title('Knauf | IT 자산 관리 v0.4'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
+        self.title('Knauf | IT 자산 관리 v0.5'); self.geometry(f'{min(1500,max(1120,self.winfo_screenwidth()-60))}x{min(920,max(680,self.winfo_screenheight()-80))}'); self.minsize(1120,680); self.configure(bg=BG)
         families=set(font.families(self))
         self.ui_font=next((f for f in ['맑은 고딕','Malgun Gothic','Noto Sans CJK KR','Arial'] if f in families),'TkDefaultFont')
         self.option_add('*Font',(self.ui_font,10))
@@ -115,7 +115,7 @@ class App(tk.Tk):
         tk.Button(side,text='SAP 자산 대조',anchor='w',font=(self.ui_font,11,'bold'),bg='#E7F5FC',fg=NAVY,relief='flat',bd=0,highlightthickness=0,padx=24,pady=8,cursor='hand2',command=self.open_sap).pack(fill='x',padx=8,pady=(16,2))
         bottom=tk.Frame(side,bg=WHITE); bottom.pack(side='bottom',fill='x',padx=20,pady=22)
         self.button(bottom,'사용 안내',self.help).pack(fill='x')
-        self.label(bottom,'EXCEL EDITION  ·  v0.4',size=9,color=MUTED).pack(pady=(12,0))
+        self.label(bottom,'EXCEL EDITION  ·  v0.5',size=9,color=MUTED).pack(pady=(12,0))
         main=tk.Frame(self,bg=BG); main.pack(side='left',fill='both',expand=True)
         top=tk.Frame(main,bg=NAVY,height=58); top.pack(fill='x'); top.pack_propagate(False)
         self.label(top,'WORKPLACE  /  IT OPERATIONS',size=10,color=WHITE,bg=NAVY,bold=True).pack(side='left',padx=24)
