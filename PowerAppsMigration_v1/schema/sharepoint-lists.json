@@ -1,0 +1,752 @@
+{
+  "schemaVersion": "1.0",
+  "listNamesAreStable": true,
+  "fieldNamesAreInternalNames": true,
+  "categoryFieldsAreTextForDelegation": true,
+  "dateTimezone": "date-only business dates; SharePoint site timezone Asia/Seoul",
+  "lists": [
+    {
+      "name": "ITAssets",
+      "description": "자산 마스터. 폐기 자산도 동일 목록에 유지.",
+      "phase": "Core",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "AssetKey",
+          "label": "자산 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "SerialNumber",
+          "label": "S/N 원문",
+          "type": "Text",
+          "required": true,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SerialKey",
+          "label": "S/N 정규화 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "SAPAssetNumber",
+          "label": "SAP 자산번호",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "PCName",
+          "label": "PC 이름",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "Model",
+          "label": "모델",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "AssignedUserKOR",
+          "label": "사용자",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "AssignedUserENG",
+          "label": "영문 사용자",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ADAccount",
+          "label": "AD 계정",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LocationKey",
+          "label": "표준 위치",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "LocationRaw",
+          "label": "원본 위치",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LocationDetail",
+          "label": "상세 위치",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "DeviceTypeRaw",
+          "label": "원본 종류",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LanConnectorRaw",
+          "label": "LAN 지급 원문",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ConsumablesRaw",
+          "label": "소모품 지급 원문",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ChecklistRaw",
+          "label": "창고 체크 원문",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyNo",
+          "label": "원본 No.",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SourceSheet",
+          "label": "원본 시트",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyStartText",
+          "label": "원본 시작일",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyExpiryText",
+          "label": "원본 만료일",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyRemainingText",
+          "label": "원본 잔여개월",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LastRequestId",
+          "label": "마지막 저장 요청 키",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "AssetGroup",
+          "label": "사용 구분",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": false,
+          "allowed": [
+            "Office",
+            "Shared",
+            "Plant",
+            "Unassigned"
+          ]
+        },
+        {
+          "name": "LifecycleState",
+          "label": "운영 상태",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": false,
+          "allowed": [
+            "InUse",
+            "Stock",
+            "Retired"
+          ]
+        },
+        {
+          "name": "DeviceType",
+          "label": "장비 종류",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": false,
+          "allowed": [
+            "Laptop",
+            "Desktop",
+            "Other",
+            "Unknown"
+          ]
+        },
+        {
+          "name": "AcquisitionState",
+          "label": "취득 상태",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false,
+          "allowed": [
+            "Acquired",
+            "Unacquired",
+            "Unknown"
+          ]
+        },
+        {
+          "name": "ExpirySource",
+          "label": "만료일 근거",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false,
+          "allowed": [
+            "Explicit",
+            "Derived",
+            "Unknown"
+          ]
+        },
+        {
+          "name": "StartDate",
+          "label": "시작일",
+          "type": "Date",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ExpiryDate",
+          "label": "확정/산출 만료일",
+          "type": "Date",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "RetiredOn",
+          "label": "폐기 확인일",
+          "type": "Date",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "UsageMonths",
+          "label": "사용기간(개월)",
+          "type": "Number",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "HasExpiry",
+          "label": "만료일 있음",
+          "type": "Boolean",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "HasDataIssues",
+          "label": "점검 필요",
+          "type": "Boolean",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "IsDeleted",
+          "label": "논리 삭제",
+          "type": "Boolean",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "SourceRow",
+          "label": "원본 행",
+          "type": "Number",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Remarks",
+          "label": "비고",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "IssueCodes",
+          "label": "점검 코드",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyMetadata",
+          "label": "원본 값/수식 보존 JSON",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITAssetStaging",
+      "description": "전체 원본 행과 검토 결과. 중복 S/N도 보존.",
+      "phase": "Core",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "SourceKey",
+          "label": "이관 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "SerialKey",
+          "label": "정규화 S/N",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "ReviewState",
+          "label": "검토 상태",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false,
+          "allowed": [
+            "Ready",
+            "NeedsSerialReview",
+            "Approved",
+            "Rejected"
+          ]
+        },
+        {
+          "name": "SourceSheet",
+          "label": "시트",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SourceRow",
+          "label": "행",
+          "type": "Number",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "IssueCodes",
+          "label": "점검 코드",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ProposedAsset",
+          "label": "마스터 제안 JSON",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "LegacyMetadata",
+          "label": "원본 값/수식 JSON",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITLocations",
+      "description": "위치 필터의 기준 목록. 자산 Distinct 집계 대신 사용.",
+      "phase": "Core",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "LocationKey",
+          "label": "위치 코드",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "SortOrder",
+          "label": "정렬",
+          "type": "Number",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SelectableForAsset",
+          "label": "자산 선택 가능",
+          "type": "Boolean",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITAssetSummary",
+      "description": "서버 페이지 순회 집계. Canvas CountRows 전체 합산 금지.",
+      "phase": "Core",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "SummaryKey",
+          "label": "집계 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "BusinessDate",
+          "label": "기준 날짜",
+          "type": "Date",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "CalculatedAt",
+          "label": "집계 시각",
+          "type": "DateTime",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "CountsJson",
+          "label": "전체 집계 JSON",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Complete",
+          "label": "집계 완전성",
+          "type": "Boolean",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITAssetEvents",
+      "description": "업무 이벤트. SharePoint 기본 버전 이력과 함께 사용.",
+      "phase": "Core",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "RequestId",
+          "label": "요청 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "AssetId",
+          "label": "마스터 ID",
+          "type": "Number",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "ActionCode",
+          "label": "업무 유형",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ActorUPN",
+          "label": "요청 사용자",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "FromState",
+          "label": "이전 상태",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ToState",
+          "label": "새 상태",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Notes",
+          "label": "사유",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "EventTime",
+          "label": "처리 시각",
+          "type": "DateTime",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITSAPBatches",
+      "description": "SAP 업로드 작업 상태. 기준 회계 시트는 하나만 선택.",
+      "phase": "Phase2",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "BatchKey",
+          "label": "배치 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "Ledger",
+          "label": "회계 시트",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "ProcessingState",
+          "label": "처리 상태",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "FileName",
+          "label": "파일명",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SnapshotTime",
+          "label": "스냅샷 시각",
+          "type": "DateTime",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "RequestedBy",
+          "label": "요청자",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "AssetRevision",
+          "label": "IT 목록 대조 기준",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "CountsJson",
+          "label": "집계",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "ITSAPResults",
+      "description": "서버/로컬 대조 결과. 대량 대조를 Canvas ForAll로 처리하지 않음.",
+      "phase": "Phase2",
+      "versioning": true,
+      "titleRequired": false,
+      "fields": [
+        {
+          "name": "ResultKey",
+          "label": "결과 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": true
+        },
+        {
+          "name": "BatchKey",
+          "label": "배치 키",
+          "type": "Text",
+          "required": true,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "StatusCode",
+          "label": "결과 코드",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "SerialKey",
+          "label": "S/N",
+          "type": "Text",
+          "required": false,
+          "indexed": true,
+          "unique": false
+        },
+        {
+          "name": "SAPAssetNumber",
+          "label": "SAP 번호",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Direction",
+          "label": "대조 방향",
+          "type": "Text",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "SourceRow",
+          "label": "SAP 원본 행",
+          "type": "Number",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Description",
+          "label": "설명",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "MatchAssetIds",
+          "label": "발견 ID JSON",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        },
+        {
+          "name": "Notes",
+          "label": "확인 사항",
+          "type": "Note",
+          "required": false,
+          "indexed": false,
+          "unique": false
+        }
+      ]
+    }
+  ],
+  "libraries": [
+    {
+      "name": "ITAssetImports",
+      "phase": "Phase2",
+      "description": "사내 SAP 파일/검토 결과 전용. 실제 회사 파일은 승인된 사내 사이트만 사용."
+    }
+  ]
+}

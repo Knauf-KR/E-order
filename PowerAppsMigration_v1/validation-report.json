@@ -1,0 +1,15 @@
+{
+  "localSampleChecks": true,
+  "sampleRows": 20,
+  "readyRows": 16,
+  "serialReviewRows": 4,
+  "powerFxDelimiterChecks": 12,
+  "powerFxCompiled": false,
+  "powerAppsStudioValidated": false,
+  "canvasPackageGenerated": false,
+  "sharePointProvisioningExecuted": false,
+  "flowsCreated": false,
+  "realDataIncluded": false,
+  "paYamlJsonSchemaStructureValid": true,
+  "officialSchemaSha256": "fc2816840271186d3b3057a1316bdb682bf6d95f4ae4849eab1fd47e2149ed13"
+}

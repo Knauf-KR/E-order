@@ -1,0 +1,7 @@
+{
+  "total": 20,
+  "ready": 16,
+  "serial_review": 4,
+  "duplicate_groups": 1,
+  "invariant": "ready + serial_review == total; all original rows retained in staging"
+}

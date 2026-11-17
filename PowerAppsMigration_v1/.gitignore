@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+private/
+local-private/
+real_conversion/
+actual_profile.json
+before_hashes.json
+*.msapp
+*.zip

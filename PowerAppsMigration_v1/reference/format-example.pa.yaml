@@ -1,0 +1,19 @@
+# Official v3 source-shape example only. NOT an importable Canvas App or Studio export.
+# Static JSON Schema validation is not a Power Fx or control-runtime validation.
+App:
+  Properties:
+    OnStart: =Set(varNavy, ColorValue("#003778"))
+Screens:
+  scrOverview:
+    Properties:
+      Fill: =ColorValue("#F3F6F9")
+    Children:
+      - lblHeading:
+          Control: Label@2.5.1
+          Properties:
+            Text: ="IT 자산 관리 · 샘플"
+            Color: =ColorValue("#003778")
+            X: =24
+            Y: =24
+            Width: =480
+            Height: =48

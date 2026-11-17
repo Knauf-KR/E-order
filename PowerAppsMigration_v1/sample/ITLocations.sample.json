@@ -1,0 +1,38 @@
+[
+  {
+    "Title": "전체 위치",
+    "LocationKey": "ALL",
+    "SortOrder": 0,
+    "SelectableForAsset": false
+  },
+  {
+    "Title": "Dangjin",
+    "LocationKey": "Dangjin",
+    "SortOrder": 1,
+    "SelectableForAsset": true
+  },
+  {
+    "Title": "IT",
+    "LocationKey": "IT",
+    "SortOrder": 2,
+    "SelectableForAsset": true
+  },
+  {
+    "Title": "Seoul",
+    "LocationKey": "Seoul",
+    "SortOrder": 3,
+    "SelectableForAsset": true
+  },
+  {
+    "Title": "Ulsan",
+    "LocationKey": "Ulsan",
+    "SortOrder": 4,
+    "SelectableForAsset": true
+  },
+  {
+    "Title": "Unknown",
+    "LocationKey": "Unknown",
+    "SortOrder": 5,
+    "SelectableForAsset": true
+  }
+]
